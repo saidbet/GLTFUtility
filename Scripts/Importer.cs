@@ -39,15 +39,15 @@ namespace Siccity.GLTFUtility {
 		}
 
 		/// <param name="bytes">GLB file is supported</param>
-		public static GameObject LoadFromBytes(byte[] bytes, ImportSettings importSettings = null) {
+		public static GameObject LoadFromBytes(byte[] bytes, ImportSettings importSettings = null, Action<GameObject, Dictionary<string, object>> handleExtensions = null) {
 			AnimationClip[] animations;
 			if (importSettings == null) importSettings = new ImportSettings();
-			return ImportGLB(bytes, importSettings, out animations);
+			return ImportGLB(bytes, importSettings, out animations, handleExtensions);
 		}
 
 		/// <param name="bytes">GLB file is supported</param>
-		public static GameObject LoadFromBytes(byte[] bytes, ImportSettings importSettings, out AnimationClip[] animations) {
-			return ImportGLB(bytes, importSettings, out animations);
+		public static GameObject LoadFromBytes(byte[] bytes, ImportSettings importSettings, out AnimationClip[] animations, Action<GameObject, Dictionary<string, object>> handleExtensions = null) {
+			return ImportGLB(bytes, importSettings, out animations, handleExtensions);
 		}
 
 		public static void LoadFromFileAsync(string filepath, ImportSettings importSettings, Action<GameObject, AnimationClip[]> onFinished, Action<float> onProgress = null) {
@@ -69,12 +69,17 @@ namespace Siccity.GLTFUtility {
 			return gltfObject.LoadInternal(filepath, null, binChunkStart, importSettings, out animations);
 		}
 
-		private static GameObject ImportGLB(byte[] bytes, ImportSettings importSettings, out AnimationClip[] animations) {
+		private static GameObject ImportGLB(byte[] bytes, ImportSettings importSettings, out AnimationClip[] animations, Action<GameObject, Dictionary<string, object>> handleExtensions = null) {
 			Stream stream = new MemoryStream(bytes);
 			long binChunkStart;
 			string json = GetGLBJson(stream, out binChunkStart);
 			GLTFObject gltfObject = JsonConvert.DeserializeObject<GLTFObject>(json);
-			return gltfObject.LoadInternal(null, bytes, binChunkStart, importSettings, out animations);
+			var go = gltfObject.LoadInternal(null, bytes, binChunkStart, importSettings, out animations);
+
+			if(gltfObject.extras != null)
+				handleExtensions(go, gltfObject.extras);
+
+			return go;
 		}
 
 		public static void ImportGLBAsync(string filepath, ImportSettings importSettings, Action<GameObject, AnimationClip[]> onFinished, Action<float> onProgress = null) {
